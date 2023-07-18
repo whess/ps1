@@ -1,10 +1,12 @@
+"Rule for deploying a file into the filesystem."
+
 def _local_deploy_impl(ctx):
     target = ctx.attr.target
     shell_commands = "mkdir -p %s\n" % (target)
 
     for src in ctx.files.srcs:
         shell_commands += "echo Copying %s to %s\n" % (src.short_path, target)
-        shell_commands += "cp -R %s %s/\n" % (src.short_path, target)
+        shell_commands += "cp -R -L %s %s/\n" % (src.short_path, target)
 
     ctx.actions.write(
         output = ctx.outputs.executable,
