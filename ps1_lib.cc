@@ -52,7 +52,12 @@ std::string TruncatePath(std::string_view path, int target_length) {
 }
 
 std::string Color(std::string_view code) {
-  return absl::StrCat("\033[", code, "m");
+  // \[ and \] surrounding non-printing characters so that
+  // bash can calculate the terminal width correctly.
+  // "\033[" (or "\e[") indicate the start of a color code and "m" ends it.
+  // Multiple codes can be specified separated by semicolons like 97;1 for bold
+  // white. 0 resets all colors/styles to default.
+  return absl::StrCat("\\[\\033[", code, "m\\]");
 }
 std::string Color(int code) { return Color(absl::StrCat(code)); }
 
@@ -65,34 +70,31 @@ std::string GetPs1(std::string_view pwd, std::string_view home,
   std::stringstream out;
   WorkspaceResult workspace = ExtractWorkspace(pwd, home, workspace_paths);
 
-  std::string path_color = "97;1";
-  std::string workspace_color = "92;1";
+  std::string path_color = "37;22";
+  std::string workspace_color = "91;1";
   std::string surround_color = "97;22";
-  std::string separator_color = "97;1";
+  std::string separator_color = "97;22";
 
   if (workspace.basename.empty()) {
-    out                                     //
-        << Color(surround_color) << prefix  //
-        << Color(path_color)
-        << TruncatePath(workspace.remaining_path,
-                        max_length - prefix.size() - suffix.size())  //
-        << Color(surround_color) << suffix                           //
+    std::string truncated_path = TruncatePath(
+        workspace.remaining_path, max_length - prefix.size() - suffix.size());
+    out                                         //
+        << Color(surround_color) << prefix      //
+        << Color(path_color) << truncated_path  //
+        << Color(surround_color) << suffix      //
         << Color(0);
   } else {
+    std::string truncated_path = TruncatePath(
+        workspace.remaining_path, max_length - 1 - workspace.basename.size() -
+                                      prefix.size() - suffix.size());
     out                                                  //
         << Color(surround_color) << prefix               //
         << Color(workspace_color) << workspace.basename  //
         << Color(separator_color) << "/"                 //
-        << Color(path_color)
-        << TruncatePath(workspace.remaining_path,
-                        max_length - 1 - workspace.basename.size() -
-                            prefix.size() - suffix.size())  //
-        << Color(surround_color) << suffix                  //
+        << Color(path_color) << truncated_path           //
+        << Color(surround_color) << suffix               //
         << Color(0);
   }
-
-  // TODO: remove
-  out << "\n\n";
 
   return out.str();
 }
